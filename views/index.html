@@ -16,18 +16,24 @@
         #canvas {
             border: solid 1px black;
         }
+
+        p {
+            width: 50px;
+            aspect-ratio: 1/1;
+            background: #000;
+        }
+
+        p:hover {
+            opacity: .5;
+        }
     </style>
 </head>
 
 <body>
     <button>aaa</button>
+    <p></p>
     <canvas id="canvas"></canvas>
     <script src="/io/socket.io.min.js"></script>
-    <script>
-        const socket = io(); // Socket.IOのインスタンスを作成
-
-
-    </script>
     <script src="/js/canvas.js"></script>
 </body>
 

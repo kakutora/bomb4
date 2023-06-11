@@ -7,15 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// ドキュメントルートの設定
-
 app.use(express.static(path.join(__dirname, '/views')));
-
-/*
-app.get("/", function (req, res) {
-    res.sendFile(__dirname + "/views/index.html");
-});
-*/
 
 app.use("/js", express.static(__dirname + "/js/"));
 app.use("/img", express.static(__dirname + "/img/"));
@@ -33,6 +25,7 @@ const fs = require('fs');
 const filePath = 'json/futsu_ga_ichiban.json';
 
 const players = {};
+let ready = 0;
 
 fs.readFile(filePath, 'utf8', (err, data) => {
     if (err) {
@@ -40,10 +33,7 @@ fs.readFile(filePath, 'utf8', (err, data) => {
         return;
     }
 
-    // 読み込まれたデータをJSONとしてパースします
     const jsonData = JSON.parse(data);
-
-    // ここでjsonDataを使って必要な処理を行います
 
     io.on("connection", (socket) => {
         const playerID = socket.id;
@@ -57,30 +47,32 @@ fs.readFile(filePath, 'utf8', (err, data) => {
 
         socket.emit("assignPlayerIdPos", { pid: playerID, y: y, x: x });
 
-        socket.emit("mapData", jsonData);
+        socket.on("ready", () => {
+            ready++;
+            if (ready == 2) {
+                io.emit("startGame", jsonData);
+                ready = 0;
+            }
+        });
 
-        socket.emit("playerUpdate", players);
+        //socket.emit("playerUpdate", players);
 
         socket.on("playerMove", (data) => {
             players[playerID] = data;
             io.emit("playerUpdate", players);
         });
 
-        socket.on('beforeDisconnect', (reason) => {
-            const userId = socket.id; // ユーザの socket.id を取得
 
-            socket.emit("dpl2", userId);
-            console.log(players[userId].x, players[userId].y);
-        });
-
-        socket.on("disconnect", () => {
+        socket.on("disconnecting", () => {
             // プレイヤー情報を削除
-            console.log(players[playerID]);
-            socket.emit("dpl", players[playerID]);
+            console.log(players[playerID], `このプレイヤーが消えたよ:${playerID}`);
+            io.emit("wtf", players[playerID]);
+
 
             delete players[playerID];
             io.emit("playerUpdate", players);
-
+            io.emit("clear");
         });
+
     });
 });

@@ -1,53 +1,3 @@
-/*
-let futsu_ga_ichiban = {
-    mapName: "testMap",
-    map: [
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    moveAllow: [0, 3, 4, 5, 7],//指定したマップチップの衝突判定
-    MAP_IMG_PATH: "/img/map3.png",//マップチップ画像
-    MAP_WIDTH: 15,//マスの数（幅）
-    MAP_HEIGHT: 15,//マスの数（高さ）
-    TILESIZE: 32,//マップチップのサイズ(px)
-    TILECOLUMN: 4,//マップチップ画像（列）
-    TILEROW: 2,//マップチップ画像（行）
-    firstPlayerPos: {
-        p1: {
-            x: 32,
-            y: 32
-        },
-        p2: {
-            x: 32,
-            y: 32
-        },
-        p3: {
-            x: 32,
-            y: 32
-        },
-        p4: {
-            x: 32,
-            y: 32
-        },
-    }
-};
-
-const map1 = JSON.parse(JSON.stringify(futsu_ga_ichiban));
-*/
-
 //----------------------------------------------------------------
 
 const SMOOTH = 1;//補完処理
@@ -65,7 +15,7 @@ let rScreen;//実画面
 let rWidth;//実画面の幅
 let rHeight;//実画面の高さ
 
-let defaultMoveSpeed = 2;
+let defaultMoveSpeed = 32;
 
 let playerX;
 let PlayerY;
@@ -80,20 +30,46 @@ let key = {
 let pid;
 let players = {};
 
+let p = document.querySelector("p");
+
+
+
+vScreen = document.createElement('canvas');
+const ctx = vScreen.getContext("2d");
+ctx.fillStyle = 'blue';  // 塗りつぶす色を指定
+
+
+p.addEventListener("click", () => {
+    console.log("a");
+    ctx.fillRect(32, 32, 416, 416);
+});
+
 //----------------------------------------------------
+const socket = io({
+    reconnection: true,  // 再接続を有効にする
+    reconnectionAttempts: 3,  // 再接続試行回数の設定
+    reconnectionDelay: 1000,  // 再接続試行間隔(ms)の設定
+}); // Socket.IOのインスタンスを作成
+
+document.querySelector("button").addEventListener("click", () => {
+    socket.emit("ready");
+});
+
+socket.on("startGame", (data) => {
+    firstProcesses(data);
+    setInterval(() => {
+        mainLoop(data);
+    }, 240);
+});
 
 socket.on('assignPlayerIdPos', (data) => {
     pid = data.pid;
+    console.log(pid);
     createPlayer(data.pid, data.x, data.y);
+});
 
-    socket.on("mapData", (data) => {
-        firstProcesses(data);
-        mainLoop(data);
-    });
-
-    socket.on("playerUpdate", (playerData) => {
-        updatePlayers(playerData);
-    });
+socket.on("playerUpdate", (playerData) => {
+    updatePlayers(playerData);
 });
 
 function updatePlayers(playerData) {
@@ -118,7 +94,6 @@ function createPlayer(id, x, y) {
 
 const firstProcesses = (map) => {
     loadImage(map);
-    vScreen = document.createElement('canvas');
     vScreen.width = (map.TILESIZE * map.MAP_WIDTH);
     vScreen.height = (map.TILESIZE * map.MAP_HEIGHT);
 
@@ -158,9 +133,11 @@ const mainLoop = (map) => {
     addEventListener("keyup", keyupfunc, false);
     keyInput(map);
     KeyOutput(defaultMoveSpeed);
+    /*
     requestAnimationFrame(() => {
         mainLoop(map);
     });
+    */
 };
 
 const realPaint = (map) => {
@@ -180,16 +157,11 @@ const vtrPaint = (map) => {
 
 const paintAll = (ctx, map) => {
     paintField(ctx, map);
-    //ctx.drawImage(chrImg, playerX, playerY);
-    //ctx.drawImage(chrImg, players[pid].x, players[pid].y);
+    console.log(players);
     for (const id in players) {
         const player = players[id];
         ctx.drawImage(chrImg, player.x, player.y);
     }
-    socket.on("dpl", (data) => {
-        console.log(data.x, data.y);
-        ctx.clearRect(data.x, data.y, 32, 32);
-    });
 };
 
 const paintField = (ctx, map) => {
@@ -244,21 +216,19 @@ const KeyOutput = (moveSpeed) => {
         if (key.push === 'down') player.y += moveSpeed;
         //socket.emit("testdata", { x: players[pid].x, y: players[pid].y });
         socket.emit("playerMove", player);
-        console.log(player.x + "|" + player.y);
+        //console.log(player.x + "|" + player.y);
     }
 };
 
-//キーボードが押されたときに呼び出される関数（かんすう）
 const keydownfunc = (event) => {
     let key_code = event.keyCode;
     if (key_code === 37) key.left = true;
     if (key_code === 38) key.up = true;
     if (key_code === 39) key.right = true;
     if (key_code === 40) key.down = true;
-    event.preventDefault();		//方向キーでブラウザがスクロールしないようにする
+    event.preventDefault();
 };
 
-//キーボードが放（はな）されたときに呼び出される関数
 const keyupfunc = (event) => {
     let key_code = event.keyCode;
     if (key_code === 37) key.left = false;
@@ -266,3 +236,4 @@ const keyupfunc = (event) => {
     if (key_code === 39) key.right = false;
     if (key_code === 40) key.down = false;
 };
+
